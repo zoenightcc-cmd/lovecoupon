@@ -1,0 +1,1167 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
+<!-- PWA / 添加到主屏幕 -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="爱心券">
+<title>爱心券 💕</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+:root{
+  --bg:#FFF5F7;--primary:#FF6B8B;--primary-light:#FFE4EC;--primary-dark:#E84D70;
+  --card:#fff;--text:#2D1B2E;--muted:#9B8FA0;--border:#F0E0E8;--tab:68px;
+  --sat:env(safe-area-inset-top,0px);
+  --sab:env(safe-area-inset-bottom,0px);
+}
+html,body{
+  height:100%;background:#E8D0D8;
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  /* 阻止 iOS 自动放大字体 */
+  -webkit-text-size-adjust:100%;text-size-adjust:100%;
+  /* 阻止背景橡皮筋滚动 */
+  overscroll-behavior:none;
+}
+#app{
+  max-width:430px;margin:0 auto;
+  /* 优先用 dvh（随地址栏收缩动态调整），降级用 svh，再降级用 vh */
+  height:100vh;height:100svh;height:100dvh;
+  display:flex;flex-direction:column;background:var(--bg);
+  position:relative;overflow:hidden;
+  /* 顶部安全区（Dynamic Island / 刘海 / 状态栏）*/
+  padding-top:var(--sat);
+}
+#page-content{
+  flex:1;overflow-y:auto;overflow-x:hidden;
+  /* 底部留出：Tab 高度 + 底部安全区（Home 条）*/
+  padding-bottom:calc(var(--tab) + var(--sab) + 8px);
+  /* iOS 惯性滚动 */
+  -webkit-overflow-scrolling:touch;
+  overscroll-behavior-y:contain;
+}
+/* Tab bar */
+#tab-bar{height:calc(var(--tab) + var(--sab));background:#fff;border-top:1px solid var(--border);display:flex;align-items:flex-start;padding-top:0;padding-bottom:var(--sab);box-shadow:0 -2px 16px rgba(255,107,139,.09);position:relative;z-index:100}
+.tab-btn{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;background:none;border:none;cursor:pointer;color:var(--muted);font-size:10px;font-weight:500;padding:8px 4px;transition:color .2s}
+.tab-btn.active{color:var(--primary)}
+.tab-btn svg{transition:transform .2s}
+.tab-btn.active svg{transform:scale(1.1)}
+/* Common */
+.page{padding:16px}
+.card{background:#fff;border-radius:16px;padding:16px;box-shadow:0 2px 12px rgba(255,107,139,.08)}
+.section-title{font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px}
+.btn-primary{background:linear-gradient(135deg,#FF6B8B,#FF4081);color:#fff;border:none;border-radius:24px;padding:14px 24px;font-size:16px;font-weight:600;cursor:pointer;width:100%;box-shadow:0 4px 16px rgba(255,64,129,.3);transition:transform .1s,box-shadow .1s;display:block}
+.btn-primary:active{transform:scale(.97);box-shadow:0 2px 8px rgba(255,64,129,.2)}
+.btn-primary:disabled{opacity:.5;cursor:default}
+/* Toggle */
+.toggle{width:44px;height:24px;border-radius:12px;background:var(--border);position:relative;cursor:pointer;transition:background .2s;flex-shrink:0}
+.toggle.on{background:var(--primary)}
+.toggle::after{content:'';position:absolute;width:20px;height:20px;border-radius:50%;background:#fff;top:2px;left:2px;transition:transform .2s;box-shadow:0 1px 4px rgba(0,0,0,.15)}
+.toggle.on::after{transform:translateX(20px)}
+/* Modals */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:200;display:none;align-items:flex-end;justify-content:center;backdrop-filter:blur(2px)}
+.overlay.show{display:flex}
+.overlay-center{align-items:center}
+.modal{background:#fff;border-radius:24px 24px 0 0;width:100%;max-width:430px;max-height:90vh;overflow-y:auto;padding:20px;padding-bottom:calc(20px + var(--sab));animation:slideUp .25s ease}
+.overlay-center .modal{border-radius:20px;max-width:320px;margin:20px;animation:popIn .2s ease}
+@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+@keyframes popIn{from{opacity:0;transform:scale(.94)}to{opacity:1;transform:scale(1)}}
+.modal-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
+.modal-title{font-size:18px;font-weight:700;color:var(--text)}
+.modal-close{width:32px;height:32px;border-radius:50%;background:var(--border);border:none;cursor:pointer;font-size:15px;color:var(--muted);display:flex;align-items:center;justify-content:center}
+/* Form */
+.fg{margin-bottom:14px}
+.fl{font-size:12px;font-weight:600;color:var(--muted);margin-bottom:5px;display:block}
+.fi{width:100%;padding:11px 13px;border:1.5px solid var(--border);border-radius:12px;font-size:15px;color:var(--text);outline:none;background:#FAFAFA;transition:border-color .2s}
+.fi:focus{border-color:var(--primary);background:#fff}
+select.fi{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%239B8FA0' d='M6 8L0 0h12z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 13px center;background-color:#FAFAFA;padding-right:36px}
+.sel-group{display:flex;gap:7px}
+.sel-opt{flex:1;padding:9px 6px;border:1.5px solid var(--border);border-radius:11px;text-align:center;font-size:13px;font-weight:500;color:var(--muted);cursor:pointer;background:#FAFAFA;transition:all .15s}
+.sel-opt.active{border-color:var(--primary);background:var(--primary-light);color:var(--primary);font-weight:600}
+/* Emoji grid */
+.emoji-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;margin-top:4px}
+.emoji-opt{aspect-ratio:1;border-radius:9px;background:#FAFAFA;border:1.5px solid transparent;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .12s}
+.emoji-opt.active{border-color:var(--primary);background:var(--primary-light)}
+/* Qty */
+.qty-row{display:flex;align-items:center;gap:16px;justify-content:center;padding:4px}
+.qty-btn{width:38px;height:38px;border-radius:50%;border:none;background:var(--primary-light);color:var(--primary);font-size:22px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:700;line-height:1}
+.qty-num{font-size:26px;font-weight:700;color:var(--text);min-width:38px;text-align:center}
+/* Tags */
+.tag{font-size:11px;padding:2px 8px;border-radius:7px;background:#F8F0F5;color:var(--muted);font-weight:500}
+/* Filter chips */
+.chips{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px;margin-bottom:10px}
+.chips::-webkit-scrollbar{display:none}
+.chip{white-space:nowrap;padding:5px 13px;border-radius:20px;border:1.5px solid var(--border);background:#fff;font-size:12px;color:var(--muted);cursor:pointer;font-weight:500;flex-shrink:0}
+.chip.active{background:var(--primary-light);border-color:var(--primary);color:var(--primary)}
+/* Empty */
+.empty{text-align:center;padding:40px 20px;color:var(--muted)}
+.empty-icon{font-size:44px;margin-bottom:10px}
+.empty-text{font-size:14px}
+.empty-sub{font-size:12px;margin-top:3px}
+/* Toast */
+@keyframes toastIn{from{opacity:0;transform:translateX(-50%) translateY(10px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+@keyframes toastOut{to{opacity:0;transform:translateX(-50%) translateY(-6px)}}
+/* ── HOME ── */
+/* 顶部 header */
+.nhd{background:var(--primary-light);padding:14px 16px 18px}
+.nhd-row{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.nhd-names{font-size:17px;font-weight:700;color:var(--text);flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nhd-date{font-size:12px;background:#fff;color:var(--muted);padding:5px 11px;border-radius:20px;white-space:nowrap;box-shadow:0 1px 6px rgba(255,107,139,.12);flex-shrink:0}
+/* 余量卡 */
+.balance-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 16px 0}
+.balance-card{background:#fff;border-radius:14px;padding:14px 14px 12px;box-shadow:0 2px 10px rgba(255,107,139,.1)}
+.balance-name{font-size:12px;color:var(--muted);margin-left:2px}
+.balance-num{font-size:36px;font-weight:700;color:var(--primary);line-height:1.1;margin:4px 0 2px}
+.balance-lbl{font-size:11px;color:var(--muted)}
+.bal-av{width:22px;height:22px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;flex-shrink:0;vertical-align:middle}
+.bal-av--you{background:#7BAEFF}
+.bal-av--her{background:#FF8FAB}
+/* 首页券卡片滑动 */
+.home-swipe-wrap{position:relative;overflow:hidden;border-radius:14px;margin-bottom:8px;touch-action:pan-y}
+.home-swipe-bg{position:absolute;right:0;top:0;bottom:0;display:flex}
+.home-act-redeem{background:linear-gradient(160deg,#FF6B8B,#FF4081);color:#fff;border:none;width:84px;font-size:12px;font-weight:700;cursor:pointer;border-radius:0 14px 14px 0;line-height:1.4;padding:0 4px}
+/* 券卡片 */
+.hci{display:flex;align-items:center;gap:12px;padding:12px 13px;background:#fff;border-radius:14px;border:1.5px solid var(--border);position:relative;z-index:1;will-change:transform;transition:transform .22s ease}
+.hci--active{background:#FFF0F4;border-color:#FFD0DC}
+.hci-emoji{width:46px;height:46px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:26px;flex-shrink:0}
+.hci-info{flex:1;min-width:0}
+.hci-name{font-size:15px;font-weight:700;color:var(--text)}
+.hci-sub{font-size:12px;color:var(--muted);margin-top:3px}
+.hci-badge{width:32px;height:32px;border-radius:50%;background:var(--primary-light);color:var(--primary);font-size:14px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+/* 最近记录流 */
+.feed-item{display:flex;align-items:flex-start;gap:10px;padding:9px 0;border-bottom:1px solid var(--border)}
+.feed-item:last-child{border-bottom:none}
+.feed-av{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;flex-shrink:0;margin-top:1px}
+.feed-av--you{background:#7BAEFF}
+.feed-av--her{background:#FF8FAB}
+.feed-info{flex:1;min-width:0}
+.feed-txt{font-size:13px;color:var(--text);line-height:1.45}
+.feed-time{font-size:11px;color:var(--muted);margin-top:3px}
+/* 底部按钮 */
+.rec-btn-wrap{padding:0 16px 16px;background:linear-gradient(to top,var(--bg) 70%,transparent);position:sticky;bottom:0}
+.btn-rec-outline{width:100%;padding:14px;border:1.5px solid #DDD;border-radius:14px;background:#fff;color:var(--text);font-size:16px;font-weight:600;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.05)}
+/* ── LIBRARY ── */
+.lib-grp-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.lib-grp-title{font-size:15px;font-weight:700;color:var(--text)}
+.lib-grp-badge{background:var(--primary-light);color:var(--primary);font-size:11px;font-weight:600;padding:2px 9px;border-radius:10px}
+/* 滑动卡 */
+.lib-swipe-wrap{position:relative;overflow:hidden;border-radius:14px;margin-bottom:8px;touch-action:pan-y}
+.lib-swipe-bg{position:absolute;right:0;top:0;bottom:0;display:flex}
+.lib-act-edit{background:#5B9EFF;color:#fff;border:none;width:66px;font-size:13px;font-weight:600;cursor:pointer}
+.lib-act-del{background:#FF4444;color:#fff;border:none;width:66px;font-size:13px;font-weight:600;cursor:pointer;border-radius:0 14px 14px 0}
+.lib-card-inner{background:#fff;display:flex;align-items:center;gap:12px;padding:13px 14px;position:relative;z-index:1;will-change:transform;transition:transform .22s ease;border-radius:14px;border:1.5px solid var(--border)}
+.lib-tags{display:flex;gap:5px;flex-wrap:wrap;margin-top:6px}
+.lib-tag{font-size:11px;padding:2px 9px;border-radius:8px;background:#F4F4F4;color:#888;font-weight:500;border:1px solid #E8E8E8}
+.add-type-btn{width:100%;padding:13px;border:2px dashed var(--border);border-radius:13px;background:transparent;color:var(--muted);font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px;transition:border-color .2s,color .2s}
+.add-type-btn:hover{border-color:var(--primary);color:var(--primary)}
+/* ── STATS ── */
+.stat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-bottom:12px}
+.stat-item{background:#fff;border-radius:13px;padding:13px 8px;text-align:center;box-shadow:0 1px 6px rgba(255,107,139,.06)}
+.stat-num{font-size:28px;font-weight:700;color:var(--primary);line-height:1}
+.stat-lbl{font-size:11px;color:var(--muted);margin-top:3px}
+.effort-card{background:#fff;border-radius:13px;padding:14px;margin-bottom:10px;box-shadow:0 1px 6px rgba(255,107,139,.06)}
+.effort-title{font-size:12px;font-weight:600;color:var(--muted);margin-bottom:9px}
+.effort-track{height:10px;border-radius:5px;background:var(--border);overflow:hidden;position:relative}
+.ef-l{position:absolute;left:0;top:0;height:100%;background:linear-gradient(to right,#FF6B8B,#FF8FAB);border-radius:5px;transition:width .5s}
+.ef-r{position:absolute;right:0;top:0;height:100%;background:linear-gradient(to left,#A78BFA,#C4B5FD);border-radius:5px;transition:width .5s}
+.effort-lbls{display:flex;justify-content:space-between;margin-top:7px;font-size:11px;color:var(--muted)}
+.chart-card{background:#fff;border-radius:13px;padding:14px;margin-bottom:12px;box-shadow:0 1px 6px rgba(255,107,139,.06)}
+.chart-title{font-size:12px;font-weight:600;color:var(--muted);margin-bottom:10px}
+.bar-chart{display:flex;flex-direction:column;gap:7px}
+.bar-row{display:flex;align-items:center;gap:7px}
+.bar-lbl{font-size:12px;color:var(--text);width:72px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex-shrink:0}
+.bar-track{flex:1;height:20px;border-radius:10px;background:var(--border);overflow:hidden}
+.bar-fill{height:100%;border-radius:10px;background:linear-gradient(to right,#FF6B8B,#FF8FAB);display:flex;align-items:center;padding-left:7px;min-width:4px}
+.bar-val{font-size:11px;color:#fff;font-weight:600;white-space:nowrap}
+.date-group{margin-bottom:14px}
+.date-lbl{font-size:12px;font-weight:600;color:var(--muted);margin-bottom:7px;padding-left:2px}
+.rec-item{background:#fff;border-radius:11px;padding:11px 13px;margin-bottom:5px;display:flex;align-items:center;gap:9px;box-shadow:0 1px 4px rgba(255,107,139,.05)}
+.ri-emoji{font-size:20px;width:38px;height:38px;display:flex;align-items:center;justify-content:center;background:var(--primary-light);border-radius:9px;flex-shrink:0}
+.ri-info{flex:1;min-width:0}
+.ri-name{font-size:14px;font-weight:600;color:var(--text)}
+.ri-detail{font-size:11px;color:var(--muted);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ri-qty{font-size:15px;font-weight:700;color:var(--primary);white-space:nowrap}
+/* ── SETTINGS ── */
+.settings-hd{background:linear-gradient(135deg,#FF6B8B,#FF4081);padding:32px 20px 44px;text-align:center}
+.avatars-row{display:flex;align-items:center;justify-content:center;gap:18px;margin-bottom:10px}
+.avatar{width:62px;height:62px;border-radius:50%;background:rgba(255,255,255,.28);display:flex;align-items:center;justify-content:center;font-size:30px;border:3px solid rgba(255,255,255,.55);overflow:hidden}
+.av-wrap{position:relative;cursor:pointer;display:inline-block}
+.av-edit-badge{position:absolute;bottom:0;right:0;width:20px;height:20px;border-radius:50%;background:var(--primary);display:flex;align-items:center;justify-content:center;font-size:11px;border:2px solid #FFF5F7;pointer-events:none}
+.av-picker-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:220;display:flex;align-items:flex-end}
+.av-picker-sheet{background:#fff;width:100%;border-radius:20px 20px 0 0;padding:18px 16px calc(16px + var(--sab));max-height:72vh;overflow-y:auto}
+.av-picker-title{font-size:16px;font-weight:700;text-align:center;margin-bottom:14px;color:var(--text)}
+.av-emoji-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:14px}
+.av-emoji-btn{font-size:28px;padding:6px 2px;border:2px solid transparent;border-radius:10px;background:#FAFAFA;cursor:pointer;text-align:center;line-height:1.3}
+.av-emoji-btn:active{border-color:var(--primary);background:var(--primary-light)}
+.av-upload-btn{width:100%;padding:12px;border:1.5px dashed var(--border);border-radius:12px;background:#FAFAFA;color:var(--muted);font-size:14px;cursor:pointer;text-align:center;display:block;box-sizing:border-box}
+.days-txt{color:#fff;font-size:14px;opacity:.9}
+.days-num{font-weight:700;font-size:17px}
+.settings-body{padding:16px;margin-top:-22px}
+.s-card{background:#fff;border-radius:15px;overflow:hidden;box-shadow:0 2px 12px rgba(255,107,139,.08);margin-bottom:14px}
+.s-sec-title{font-size:11px;font-weight:600;color:var(--muted);letter-spacing:.5px;text-transform:uppercase;padding:10px 16px 3px}
+.s-row{display:flex;align-items:center;padding:13px 16px;border-bottom:1px solid var(--border);gap:9px}
+.s-row:last-child{border-bottom:none}
+.s-lbl{font-size:15px;color:var(--text);flex:1}
+.s-input{border:none;outline:none;text-align:right;font-size:14px;color:var(--text);background:transparent;width:130px}
+.s-chevron{color:var(--border);font-size:18px;line-height:1}
+.gender-row{display:flex;gap:6px;width:100%}
+.gender-opt{flex:1;padding:7px 4px;border:1.5px solid var(--border);border-radius:9px;text-align:center;font-size:12px;font-weight:500;color:var(--muted);cursor:pointer;background:#FAFAFA}
+.gender-opt.active{border-color:var(--primary);background:var(--primary-light);color:var(--primary)}
+.danger-btn{width:100%;padding:13px;border:none;border-radius:12px;background:#FFF0F0;color:#FF4444;font-size:15px;font-weight:600;cursor:pointer}
+/* Confirm */
+.cfm-icon{font-size:46px;margin-bottom:10px;display:block}
+.cfm-title{font-size:17px;font-weight:700;color:var(--text);margin-bottom:7px}
+.cfm-body{font-size:13px;color:var(--muted);margin-bottom:18px;line-height:1.5}
+.cfm-actions{display:flex;gap:9px}
+.cfm-cancel{flex:1;padding:11px;border:1.5px solid var(--border);border-radius:11px;background:none;font-size:14px;color:var(--muted);cursor:pointer;font-weight:500}
+.cfm-ok{flex:1;padding:11px;border:none;border-radius:11px;background:#FF4444;color:#fff;font-size:14px;font-weight:600;cursor:pointer}
+input[type=number]{-moz-appearance:textfield}
+input[type=number]::-webkit-inner-spin-button,
+input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none}
+</style>
+</head>
+<body>
+<div id="av-picker"></div>
+<div id="app">
+  <div id="page-content"></div>
+  <nav id="tab-bar">
+    <button class="tab-btn active" onclick="switchTab('home')" id="tab-home">
+      <svg width="21" height="21" viewBox="0 0 24 24" fill="currentColor"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
+      <span>首页</span>
+    </button>
+    <button class="tab-btn" onclick="switchTab('library')" id="tab-library">
+      <svg width="21" height="21" viewBox="0 0 24 24" fill="currentColor"><path d="M5 6h14a1 1 0 0 1 1 1v3a2 2 0 0 0 0 4v3a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-3a2 2 0 0 0 0-4V7a1 1 0 0 1 1-1z"/></svg>
+      <span>券库</span>
+    </button>
+    <button class="tab-btn" onclick="switchTab('stats')" id="tab-stats">
+      <svg width="21" height="21" viewBox="0 0 24 24" fill="currentColor"><path d="M9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4zM20 19H4V5H2v16h18v-2z"/></svg>
+      <span>记录</span>
+    </button>
+    <button class="tab-btn" onclick="switchTab('settings')" id="tab-settings">
+      <svg width="21" height="21" viewBox="0 0 24 24" fill="currentColor"><path d="M19.43 12.98c.04-.32.07-.64.07-.98s-.03-.66-.07-.98l2.11-1.65c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.39-.3-.61-.22l-2.49 1c-.52-.4-1.08-.73-1.69-.98l-.38-2.65C14.46 2.18 14.25 2 14 2h-4c-.25 0-.46.18-.49.42l-.38 2.65c-.61.25-1.17.58-1.69.98l-2.49-1c-.23-.09-.49 0-.61.22l-2 3.46c-.13.22-.07.49.12.64l2.11 1.65c-.04.32-.07.65-.07.98s.03.66.07.98l-2.11 1.65c-.19.15-.24.42-.12.64l2 3.46c.12.22.39.3.61.22l2.49-1c.52.4 1.08.73 1.69.98l.38 2.65c.03.24.24.42.49.42h4c.25 0 .46-.18.49-.42l.38-2.65c.61-.25 1.17-.58 1.69-.98l2.49 1c.23.09.49 0 .61-.22l2-3.46c.13-.22.07-.49-.12-.64l-2.11-1.65zM12 15.5c-1.93 0-3.5-1.57-3.5-3.5s1.57-3.5 3.5-3.5 3.5 1.57 3.5 3.5-1.57 3.5-3.5 3.5z"/></svg>
+      <span>设置</span>
+    </button>
+  </nav>
+</div>
+
+<div class="overlay" id="overlay"><div class="modal" id="modal-content"></div></div>
+<div class="overlay overlay-center" id="cfm-overlay"><div class="modal" id="cfm-content"></div></div>
+
+<script>
+// ═══ CONSTANTS ═══
+const EMOJIS = ['💆','💑','🍳','🎬','🎮','🛍️','🍽️','🌹','💐','🎁','💋','🤗','🎂','☕','🍰','🎵','🚗','🏖️','🌙','✨','💪','🛁','📸','🍦','💝','🥂','🎪','🏠','🎯','🧁','🍫','🌈','🎠','🍜','🎀','🕯️','🌸','🍓','💌','🧸','🛋️','🌺','🍷','🪄','🎭','🎊','🌷','🎋'];
+
+// ═══ STATE ═══
+let settings = {name1:'',name2:'',gender2:'none',anniversary:'',reminderEnabled:false,avatar1:'',avatar2:''};
+let couponTypes = [];
+let records = [];
+let currentTab = 'home';
+let filter = {direction:'all',typeId:'all'};
+
+// ═══ PERSIST ═══
+function load(){
+  try{
+    const s=localStorage.getItem('lc_s'); if(s) settings=JSON.parse(s);
+    const ct=localStorage.getItem('lc_ct'); if(ct) couponTypes=JSON.parse(ct);
+    const r=localStorage.getItem('lc_r'); if(r) records=JSON.parse(r);
+  }catch(e){}
+}
+function save(){
+  localStorage.setItem('lc_s',JSON.stringify(settings));
+  localStorage.setItem('lc_ct',JSON.stringify(couponTypes));
+  localStorage.setItem('lc_r',JSON.stringify(records));
+}
+
+// ═══ HELPERS ═══
+function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2)}
+function p2(){
+  if(settings.name2&&settings.name2.trim()) return settings.name2.trim();
+  if(settings.gender2==='female') return '她';
+  if(settings.gender2==='male') return '他';
+  return 'TA';
+}
+function myName(){
+  return (settings.name1&&settings.name1.trim())||'我';
+}
+function dirLabel(d){
+  const p=p2();
+  return d==='p2top1'?`${p}给我`:`我给${p}`;
+}
+function remaining(id){
+  const t=couponTypes.find(x=>x.id===id);
+  if(!t) return 0;
+  const used=records.filter(r=>r.couponTypeId===id).reduce((s,r)=>s+r.quantity,0);
+  return Math.max(0,(t.stock||0)-used);
+}
+function totalRemaining(dir){
+  return couponTypes.filter(t=>t.direction===dir).reduce((s,t)=>s+remaining(t.id),0);
+}
+function today(){return new Date().toISOString().slice(0,10)}
+function fmtDate(ds){
+  const t=today();
+  const y=new Date(Date.now()-864e5).toISOString().slice(0,10);
+  if(ds===t) return '今天';
+  if(ds===y) return '昨天';
+  const d=new Date(ds);
+  return `${d.getMonth()+1}月${d.getDate()}日`;
+}
+function daysTogether(){
+  if(!settings.anniversary) return null;
+  return Math.max(0,Math.floor((Date.now()-new Date(settings.anniversary))/864e5));
+}
+function monthRecs(){
+  const ym=today().slice(0,7);
+  return records.filter(r=>r.date.startsWith(ym));
+}
+function toast(msg){
+  const el=document.createElement('div');
+  el.textContent=msg;
+  el.style.cssText=`position:fixed;bottom:calc(68px + 20px);left:50%;transform:translateX(-50%);
+    background:rgba(45,27,46,.88);color:#fff;padding:9px 18px;border-radius:20px;
+    font-size:13px;z-index:500;animation:toastIn .25s ease;max-width:280px;text-align:center;white-space:nowrap`;
+  document.getElementById('app').appendChild(el);
+  setTimeout(()=>{el.style.animation='toastOut .25s ease forwards';setTimeout(()=>el.remove(),250)},1700);
+}
+
+// ═══ TABS ═══
+function switchTab(t){
+  currentTab=t;
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('tab-'+t).classList.add('active');
+  renderPage();
+}
+
+function isExpired(t){
+  if(!t||!t.hasExpiry||!t.expiryDays||!t.createdAt) return false;
+  return Date.now() > t.createdAt + t.expiryDays*86400000;
+}
+function checkExpiries(){
+  let changed=false;
+  couponTypes.forEach(t=>{
+    if(!isExpired(t)) return;
+    if(records.find(r=>r.couponTypeId===t.id&&r.type==='expired')) return;
+    const used=records.filter(r=>r.couponTypeId===t.id).reduce((s,r)=>s+r.quantity,0);
+    const rem=Math.max(0,(t.stock||0)-used);
+    if(rem<=0) return;
+    const exAt=new Date(t.createdAt+t.expiryDays*86400000);
+    const ds=`${exAt.getFullYear()}-${String(exAt.getMonth()+1).padStart(2,'0')}-${String(exAt.getDate()).padStart(2,'0')}`;
+    records.push({id:uid(),couponTypeId:t.id,couponName:t.name,couponEmoji:t.emoji,
+      direction:t.direction,quantity:rem,note:'',date:ds,
+      createdAt:t.createdAt+t.expiryDays*86400000,type:'expired'});
+    changed=true;
+  });
+  if(changed) save();
+}
+function renderPage(){
+  checkExpiries();
+  const el=document.getElementById('page-content');
+  if(currentTab==='home') el.innerHTML=renderHome();
+  else if(currentTab==='library') el.innerHTML=renderLibrary();
+  else if(currentTab==='stats') el.innerHTML=renderStats();
+  else el.innerHTML=renderSettings();
+}
+
+// ═══ HOME ═══
+const BGPAL=['#FFE8D4','#D4E8FF','#D4FFE8','#FFD4F0','#F0D4FF','#FFF8D4'];
+function renderHome(){
+  const p=p2();
+  const n1=myName();
+  const n2=p2();
+  const p1rem=totalRemaining('p2top1');
+  const p2rem=totalRemaining('p1top2');
+  const td=today();
+
+  // 当前日期
+  const now=new Date();
+  const dateStr=`${now.getFullYear()}年${now.getMonth()+1}月${now.getDate()}日`;
+
+  // 可用券列表
+  const avail=couponTypes.filter(t=>remaining(t.id)>0);
+  const couponListHTML=avail.length===0
+    ?`<div class="empty"><div class="empty-icon">🎫</div><div class="empty-text">还没有可用的券</div><div class="empty-sub">去券库添加一些吧～</div></div>`
+    :avail.map((t,i)=>{
+        const rem=remaining(t.id);
+        const bg=BGPAL[i%BGPAL.length];
+        const dirTxt=t.direction==='p2top1'?`${p}→我`:`我→${p}`;
+        const typeRecs=records.filter(r=>r.couponTypeId===t.id);
+        const usedToday=typeRecs.filter(r=>r.date===td).reduce((s,r)=>s+r.quantity,0);
+        const lastRec=[...typeRecs].sort((a,b)=>b.date.localeCompare(a.date)||b.createdAt-a.createdAt)[0];
+        let usageInfo;
+        if(usedToday>0) usageInfo=`今天已用 ×${usedToday}`;
+        else if(lastRec){const ld=new Date(lastRec.date);usageInfo=`上次: ${ld.getMonth()+1}月${ld.getDate()}日`;}
+        else usageInfo='从未使用';
+        return `<div class="home-swipe-wrap" id="hsw-${t.id}">
+          <div class="home-swipe-bg">
+            <button class="home-act-redeem" onclick="openQuickRedeem('${t.id}')">快速核销</button>
+          </div>
+          <div class="hci ${usedToday>0?'hci--active':''}"
+            ontouchstart="hSwipeStart(event,'${t.id}')"
+            ontouchmove="hSwipeMove(event,'${t.id}')"
+            ontouchend="hSwipeEnd(event,'${t.id}')"
+            onclick="hSwipeTap('${t.id}')">
+            <div class="hci-emoji" style="background:${bg}">${t.emoji}</div>
+            <div class="hci-info">
+              <div class="hci-name">${t.name}</div>
+              <div class="hci-sub">${dirTxt} · ${usageInfo}</div>
+            </div>
+            <div class="hci-badge">${rem}</div>
+          </div>
+        </div>`;
+      }).join('');
+
+  // 最近记录流（最多 5 条）
+  const recent=[...records].sort((a,b)=>b.date.localeCompare(a.date)||b.createdAt-a.createdAt).slice(0,5);
+  const feedHTML=recent.length===0
+    ?`<div style="text-align:center;color:var(--muted);font-size:13px;padding:14px 0">还没有记录，快去使用一张吧 💕</div>`
+    :recent.map(r=>{
+        const isMe=r.direction==='p2top1';
+        const actorName=isMe?n1:n2;
+        const avCls=isMe?'feed-av--you':'feed-av--her';
+        const avLbl=isMe?'我':p;
+        const d=new Date(r.createdAt);
+        const tstr=`${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+        if(r.type==='expired') return `<div class="feed-item" style="opacity:.55">
+          <div class="feed-av" style="background:#bbb">${avLbl}</div>
+          <div class="feed-info">
+            <div class="feed-txt">${r.couponEmoji||'🎫'} ${r.couponName||'券'} <span style="color:#aaa;font-size:12px">已过期</span> ×${r.quantity}</div>
+            <div class="feed-time">${fmtDate(r.date)} · 到期失效</div>
+          </div>
+        </div>`;
+        return `<div class="feed-item">
+          <div class="feed-av ${avCls}">${avLbl}</div>
+          <div class="feed-info">
+            <div class="feed-txt"><b>${actorName}</b> 使用了 ${r.couponEmoji||'🎫'} ${r.couponName||'券'} ×${r.quantity}</div>
+            <div class="feed-time">${fmtDate(r.date)} · ${tstr}</div>
+          </div>
+        </div>`;
+      }).join('');
+
+  return `
+    <div class="nhd">
+      <div class="nhd-row">
+        <div class="nhd-names">💕 ${n1} & ${n2}</div>
+        <div class="nhd-date">${dateStr}</div>
+      </div>
+    </div>
+    <div class="balance-row">
+      <div class="balance-card">
+        <div style="display:flex;align-items:center;gap:5px">
+          <span class="bal-av bal-av--you">${n1.charAt(0)||'我'}</span>
+          <span class="balance-name">${n1}持有</span>
+        </div>
+        <div class="balance-num">${p1rem}</div>
+        <div class="balance-lbl">张未使用券</div>
+      </div>
+      <div class="balance-card">
+        <div style="display:flex;align-items:center;gap:5px">
+          <span class="bal-av bal-av--her">${n2.charAt(0)||'T'}</span>
+          <span class="balance-name">${n2}持有</span>
+        </div>
+        <div class="balance-num">${p2rem}</div>
+        <div class="balance-lbl">张未使用券</div>
+      </div>
+    </div>
+    <div style="padding:14px 16px 0">
+      <button class="btn-primary" onclick="openRecordModal()">💌 使用一张券</button>
+    </div>
+    <div style="padding:16px 16px 0">
+      <div class="section-title">可用爱心券</div>
+      ${couponListHTML}
+    </div>
+    <div style="height:1px;background:var(--border);margin:14px 16px 0"></div>
+    <div style="padding:14px 16px 16px">
+      <div class="section-title">最近记录</div>
+      ${feedHTML}
+    </div>`;
+}
+
+// ═══ LIBRARY ═══
+function renderLibrary(){
+  const p=p2();
+  function grp(dir,title){
+    const types=couponTypes.filter(t=>t.direction===dir);
+    const dirTxt=dir==='p2top1'?`${p}→我`:`我→${p}`;
+    const cards=types.map((t,i)=>{
+      const rem=remaining(t.id);
+      const expired=isExpired(t);
+      const bg=BGPAL[i%BGPAL.length];
+      const tags=[dirTxt];
+      if(t.hasExpiry&&!expired) tags.push(`${t.expiryDays}天有效`);
+      if(expired) tags.push('已过期');
+      return `<div class="lib-swipe-wrap" id="sw-${t.id}" ${expired?'style="opacity:.55"':''}>
+        <div class="lib-swipe-bg">
+          <button class="lib-act-edit" onclick="closeAllSwipes();openTypeModal('${t.id}')">编辑</button>
+          <button class="lib-act-del" onclick="closeAllSwipes();confirmDel('${t.id}')">删除</button>
+        </div>
+        <div class="lib-card-inner"
+          ontouchstart="swipeStart(event,'${t.id}')"
+          ontouchmove="swipeMove(event,'${t.id}')"
+          ontouchend="swipeEnd(event,'${t.id}')"
+          onclick="swipeTap('${t.id}')">
+          <div class="hci-emoji" style="background:${bg};${expired?'filter:grayscale(1)':''}">${t.emoji}</div>
+          <div class="hci-info">
+            <div class="hci-name">${t.name}</div>
+            <div class="lib-tags">${tags.map(tg=>`<span class="lib-tag" ${tg==='已过期'?'style="color:#bbb;border-color:#ddd"':''}>${tg}</span>`).join('')}</div>
+          </div>
+          <div class="hci-badge" ${expired?'style="background:#eee;color:#bbb"':''}>${rem}</div>
+        </div>
+      </div>`;
+    }).join('');
+    const emptyCard=types.length===0
+      ?`<div style="text-align:center;color:var(--muted);font-size:13px;padding:16px 0">还没有券，点下方添加</div>`:'';
+    return `<div style="margin-bottom:24px">
+      <div class="lib-grp-hd">
+        <div class="lib-grp-title">${title}</div>
+        <span class="lib-grp-badge">${types.length} 种</span>
+      </div>
+      ${emptyCard}${cards}
+      <button class="add-type-btn" onclick="openTypeModal(null,'${dir}')">＋ 新建券种</button>
+    </div>`;
+  }
+  return `<div class="page">
+    <div style="padding:4px 0 14px"><span style="font-size:22px;font-weight:700;color:var(--text)">券库</span></div>
+    ${grp('p2top1',`${p}给我的券`)}
+    ${grp('p1top2',`我给${p}的券`)}
+  </div>`;
+}
+
+// ═══ SWIPE ═══
+let _swTouch=null; // {id, startX, startY, decided}
+let _swOpenEl=null; // 当前展开的 card inner element
+
+function _getInner(id){return document.querySelector(`#sw-${id} .lib-card-inner`)}
+
+function swipeStart(e,id){
+  // 关闭其他已展开的卡
+  if(_swOpenEl){
+    const cur=_getInner(id);
+    if(_swOpenEl!==cur){
+      _swOpenEl.style.transition='transform .22s ease';
+      _swOpenEl.style.transform='translateX(0)';
+      _swOpenEl=null;
+    }
+  }
+  _swTouch={id,startX:e.touches[0].clientX,startY:e.touches[0].clientY,decided:false,wasOpen:!!_swOpenEl};
+}
+
+function swipeMove(e,id){
+  if(!_swTouch||_swTouch.id!==id) return;
+  const dx=e.touches[0].clientX-_swTouch.startX;
+  const dy=e.touches[0].clientY-_swTouch.startY;
+  if(!_swTouch.decided){
+    if(Math.abs(dy)>Math.abs(dx)) return; // 竖向滚动优先
+    _swTouch.decided=true;
+  }
+  if(dx>0) return; // 只响应左滑
+  e.preventDefault();
+  const el=_getInner(id);
+  if(el){
+    el.style.transition='none';
+    el.style.transform=`translateX(${Math.max(-132,dx)}px)`;
+  }
+}
+
+function swipeEnd(e,id){
+  if(!_swTouch||_swTouch.id!==id) return;
+  const dx=e.changedTouches[0].clientX-_swTouch.startX;
+  const el=_getInner(id);
+  if(el){
+    el.style.transition='transform .22s ease';
+    if(dx<-56){
+      el.style.transform='translateX(-132px)';
+      _swOpenEl=el;
+    } else {
+      el.style.transform='translateX(0)';
+      _swOpenEl=null;
+    }
+  }
+  _swTouch=null;
+}
+
+function swipeTap(id){
+  if(_swOpenEl&&_swOpenEl===_getInner(id)){
+    closeAllSwipes();
+  } else if(!_swOpenEl){
+    openTypeModal(id);
+  }
+}
+
+function closeAllSwipes(){
+  if(_swOpenEl){
+    _swOpenEl.style.transition='transform .22s ease';
+    _swOpenEl.style.transform='translateX(0)';
+    _swOpenEl=null;
+  }
+  _swTouch=null;
+}
+
+// ═══ HOME SWIPE ═══
+let _hSwTouch=null,_hSwOpenEl=null;
+function _getHI(id){return document.querySelector(`#hsw-${id} .hci`)}
+
+function hSwipeStart(e,id){
+  if(_hSwOpenEl&&_hSwOpenEl!==_getHI(id)){
+    _hSwOpenEl.style.transition='transform .22s ease';
+    _hSwOpenEl.style.transform='translateX(0)';
+    _hSwOpenEl=null;
+  }
+  _hSwTouch={id,startX:e.touches[0].clientX,startY:e.touches[0].clientY,decided:false};
+}
+function hSwipeMove(e,id){
+  if(!_hSwTouch||_hSwTouch.id!==id) return;
+  const dx=e.touches[0].clientX-_hSwTouch.startX;
+  const dy=e.touches[0].clientY-_hSwTouch.startY;
+  if(!_hSwTouch.decided){
+    if(Math.abs(dy)>Math.abs(dx)) return;
+    _hSwTouch.decided=true;
+  }
+  if(dx>0) return;
+  e.preventDefault();
+  const el=_getHI(id);
+  if(el){el.style.transition='none';el.style.transform=`translateX(${Math.max(-84,dx)}px)`;}
+}
+function hSwipeEnd(e,id){
+  if(!_hSwTouch||_hSwTouch.id!==id) return;
+  const dx=e.changedTouches[0].clientX-_hSwTouch.startX;
+  const el=_getHI(id);
+  if(el){
+    el.style.transition='transform .22s ease';
+    if(dx<-44){el.style.transform='translateX(-84px)';_hSwOpenEl=el;}
+    else{el.style.transform='translateX(0)';_hSwOpenEl=null;}
+  }
+  _hSwTouch=null;
+}
+function hSwipeTap(id){
+  if(_hSwOpenEl&&_hSwOpenEl===_getHI(id)){
+    _hSwOpenEl.style.transition='transform .22s ease';
+    _hSwOpenEl.style.transform='translateX(0)';
+    _hSwOpenEl=null;
+  }
+}
+function closeAllHomeSwipes(){
+  if(_hSwOpenEl){_hSwOpenEl.style.transition='transform .22s ease';_hSwOpenEl.style.transform='translateX(0)';_hSwOpenEl=null;}
+  _hSwTouch=null;
+}
+
+// ═══ QUICK REDEEM ═══
+let _qrForm={typeId:'',quantity:1,note:''};
+function openQuickRedeem(id){
+  closeAllHomeSwipes();
+  const t=couponTypes.find(x=>x.id===id);
+  if(!t) return;
+  _qrForm={typeId:id,quantity:1,note:''};
+  _renderQR();
+}
+function _renderQR(){
+  const t=couponTypes.find(x=>x.id===_qrForm.typeId);
+  if(!t) return;
+  const rem=remaining(t.id);
+  const idx=couponTypes.indexOf(t);
+  const bg=BGPAL[idx%BGPAL.length];
+  const dirTxt=t.direction==='p2top1'?`${p2()}→我`:`我→${p2()}`;
+  openModal(`
+    <div class="modal-hd">
+      <span class="modal-title">快速核销</span>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div style="display:flex;align-items:center;gap:13px;padding:4px 0 16px;border-bottom:1px solid var(--border);margin-bottom:16px">
+      <div style="width:50px;height:50px;border-radius:13px;background:${bg};display:flex;align-items:center;justify-content:center;font-size:28px;flex-shrink:0">${t.emoji}</div>
+      <div>
+        <div style="font-size:17px;font-weight:700;color:var(--text)">${t.name}</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:3px">${dirTxt} · 剩余 <b style="color:var(--primary)">${rem}</b> 张</div>
+      </div>
+    </div>
+    <div class="fg"><label class="fl">使用数量</label>
+      <div class="qty-row">
+        <button class="qty-btn" onclick="if(_qrForm.quantity>1){_qrForm.quantity--;_renderQR()}">−</button>
+        <span class="qty-num">${_qrForm.quantity}</span>
+        <button class="qty-btn" onclick="if(_qrForm.quantity<${rem}){_qrForm.quantity++;_renderQR()}">+</button>
+      </div></div>
+    <div class="fg"><label class="fl">备注（可选）</label>
+      <input class="fi" placeholder="留下一些甜蜜的话..." value="${esc(_qrForm.note)}" oninput="_qrForm.note=this.value">
+    </div>
+    <button class="btn-primary" onclick="submitQR()">确认核销</button>
+    <div style="height:8px"></div>`);
+}
+function submitQR(){
+  const t=couponTypes.find(x=>x.id===_qrForm.typeId);
+  if(!t) return;
+  records.push({
+    id:uid(),couponTypeId:t.id,couponName:t.name,couponEmoji:t.emoji,
+    direction:t.direction,quantity:_qrForm.quantity,
+    note:_qrForm.note.trim(),date:today(),createdAt:Date.now()
+  });
+  save();closeModal();renderPage();
+  toast(`核销成功 ${t.emoji} ×${_qrForm.quantity}`);
+}
+
+// ═══ STATS ═══
+function renderStats(){
+  const p=p2();
+  const now=new Date();
+  const monthLbl=`${now.getFullYear()}年${now.getMonth()+1}月`;
+  const mr=monthRecs();
+  const total=mr.reduce((s,r)=>s+r.quantity,0);
+  const c1=mr.filter(r=>r.direction==='p2top1').reduce((s,r)=>s+r.quantity,0);
+  const c2=mr.filter(r=>r.direction==='p1top2').reduce((s,r)=>s+r.quantity,0);
+  const tot=c1+c2||1;
+  const lp=Math.round(c1/tot*100);
+  const rp=Math.round(c2/tot*100);
+
+  // most used
+  const tc={};
+  mr.forEach(r=>{tc[r.couponTypeId]=(tc[r.couponTypeId]||0)+r.quantity});
+  const sorted=Object.entries(tc).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  const mx=sorted[0]?.[1]||1;
+  const barHTML=sorted.length===0
+    ?`<div style="text-align:center;color:var(--muted);font-size:13px;padding:12px">本月暂无记录</div>`
+    :sorted.map(([tid,cnt])=>{
+        const t=couponTypes.find(x=>x.id===tid);
+        const nm=t?`${t.emoji} ${t.name}`:'已删除';
+        const pct=Math.round(cnt/mx*100);
+        return `<div class="bar-row">
+          <div class="bar-lbl">${nm}</div>
+          <div class="bar-track"><div class="bar-fill" style="width:${pct}%">${pct>25?`<span class="bar-val">${cnt}</span>`:''}</div></div>
+          ${pct<=25?`<span style="font-size:11px;color:var(--muted);font-weight:600;min-width:18px">${cnt}</span>`:''}
+        </div>`;
+      }).join('');
+
+  // records list
+  const frecs=records.filter(r=>{
+    if(filter.direction!=='all'&&r.direction!==filter.direction) return false;
+    if(filter.typeId!=='all'&&r.couponTypeId!==filter.typeId) return false;
+    return true;
+  }).sort((a,b)=>b.date.localeCompare(a.date)||b.createdAt-a.createdAt);
+
+  const groups={};
+  frecs.forEach(r=>{if(!groups[r.date])groups[r.date]=[];groups[r.date].push(r)});
+  const recsHTML=Object.keys(groups).length===0
+    ?`<div class="empty"><div class="empty-icon">📋</div><div class="empty-text">暂无记录</div></div>`
+    :Object.entries(groups).map(([d,rs])=>`
+      <div class="date-group">
+        <div class="date-lbl">${fmtDate(d)}</div>
+        ${rs.map(r=>{
+          const t=couponTypes.find(x=>x.id===r.couponTypeId);
+          const em=r.couponEmoji||(t?t.emoji:'🎫');
+          const nm=r.couponName||(t?t.name:'已删除');
+          if(r.type==='expired') return `<div class="rec-item" style="opacity:.5">
+            <div class="ri-emoji" style="filter:grayscale(1)">${em}</div>
+            <div class="ri-info">
+              <div class="ri-name">${nm} <span style="font-size:11px;color:#bbb;font-weight:400">已过期</span></div>
+              <div class="ri-detail">到期失效</div>
+            </div>
+            <div class="ri-qty" style="color:#bbb">×${r.quantity}</div>
+          </div>`;
+          return `<div class="rec-item">
+            <div class="ri-emoji">${em}</div>
+            <div class="ri-info">
+              <div class="ri-name">${nm}</div>
+              <div class="ri-detail">${dirLabel(r.direction)}${r.note?' · '+r.note:''}</div>
+            </div>
+            <div class="ri-qty">×${r.quantity}</div>
+          </div>`;
+        }).join('')}
+      </div>`).join('');
+
+  const dirChips=[{k:'all',l:'全部'},{k:'p2top1',l:`${p}给我`},{k:'p1top2',l:`我给${p}`}];
+  const typeChips=[{k:'all',l:'全部券种'},...couponTypes.map(t=>({k:t.id,l:`${t.emoji} ${t.name}`}))];
+
+  return `<div class="page">
+    <div style="padding:4px 0 10px"><span style="font-size:22px;font-weight:700;color:var(--text)">记录 & 统计</span></div>
+    <div style="font-size:12px;color:var(--muted);text-align:center;margin-bottom:12px">${monthLbl}</div>
+    <div class="stat-grid">
+      <div class="stat-item"><div class="stat-num">${total}</div><div class="stat-lbl">总次数</div></div>
+      <div class="stat-item"><div class="stat-num">${c1}</div><div class="stat-lbl">${p}给我</div></div>
+      <div class="stat-item"><div class="stat-num">${c2}</div><div class="stat-lbl">我给${p}</div></div>
+    </div>
+    <div class="effort-card">
+      <div class="effort-title">付出对比</div>
+      <div class="effort-track"><div class="ef-l" style="width:${lp}%"></div><div class="ef-r" style="width:${rp}%"></div></div>
+      <div class="effort-lbls"><span>${p}给我 ${c1}次</span><span>我给${p} ${c2}次</span></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">最常用券</div>
+      <div class="bar-chart">${barHTML}</div>
+    </div>
+    <div class="section-title" style="margin-top:4px">使用记录</div>
+    <div class="chips">${dirChips.map(f=>`<span class="chip ${filter.direction===f.k?'active':''}" onclick="setFilter('direction','${f.k}')">${f.l}</span>`).join('')}</div>
+    <div class="chips">${typeChips.map(f=>`<span class="chip ${filter.typeId===f.k?'active':''}" onclick="setFilter('typeId','${f.k}')">${f.l}</span>`).join('')}</div>
+    ${recsHTML}
+  </div>`;
+}
+function setFilter(k,v){filter[k]=v;renderPage()}
+
+// ═══ SETTINGS ═══
+function renderSettings(){
+  const p=p2();
+  const d=daysTogether();
+  const gOpts=[{v:'female',l:'女生 她'},{v:'male',l:'男生 他'},{v:'none',l:'不设置'}];
+  const p2Placeholder=settings.gender2==='female'?'她':settings.gender2==='male'?'他':'TA';
+  return `
+    <div class="settings-hd">
+      <div class="avatars-row">
+        <div class="av-wrap" onclick="openAvatarPicker(1)">
+          <div class="avatar">${avatarInner(1)}</div>
+          <div class="av-edit-badge">✏️</div>
+        </div>
+        <div style="font-size:22px">💕</div>
+        <div class="av-wrap" onclick="openAvatarPicker(2)">
+          <div class="avatar">${avatarInner(2)}</div>
+          <div class="av-edit-badge">✏️</div>
+        </div>
+      </div>
+      ${d!==null?`<div class="days-txt">在一起 <span class="days-num">${d}</span> 天 🌸</div>`
+        :`<div class="days-txt" style="opacity:.7">设置纪念日查看天数</div>`}
+    </div>
+    <div class="settings-body">
+      <div class="s-card">
+        <div class="s-sec-title">人物设置</div>
+        <div class="s-row"><span class="s-lbl">我的名字</span>
+          <input class="s-input" value="${esc(settings.name1)}" placeholder="我（默认）"
+            onblur="settings.name1=this.value.trim();save();renderPage()"></div>
+        <div class="s-row"><span class="s-lbl">${p}的名字</span>
+          <input class="s-input" value="${esc(settings.name2)}" placeholder="${p2Placeholder}（默认）"
+            onblur="settings.name2=this.value.trim();save();renderPage()"></div>
+        <div class="s-row" style="flex-direction:column;align-items:flex-start;gap:7px">
+          <span class="s-lbl">TA 的性别</span>
+          <div class="gender-row">
+            ${gOpts.map(o=>`<div class="gender-opt ${settings.gender2===o.v?'active':''}" onclick="setG2('${o.v}')">${o.l}</div>`).join('')}
+          </div>
+        </div>
+      </div>
+      <div class="s-card">
+        <div class="s-sec-title">纪念日</div>
+        <div class="s-row"><span class="s-lbl">在一起纪念日</span>
+          <input type="date" class="s-input" value="${settings.anniversary}"
+            onchange="settings.anniversary=this.value;save();renderPage()" style="color:var(--text)"></div>
+      </div>
+      <div class="s-card">
+        <div class="s-sec-title">提醒</div>
+        <div class="s-row"><span class="s-lbl">到期提醒</span>
+          <div class="toggle ${settings.reminderEnabled?'on':''}" onclick="settings.reminderEnabled=!settings.reminderEnabled;save();renderPage()"></div>
+        </div>
+      </div>
+      <div class="s-card">
+        <div class="s-sec-title">数据</div>
+        <div class="s-row" style="cursor:pointer" onclick="exportCSV()">
+          <span class="s-lbl">导出 CSV</span><span class="s-chevron">›</span></div>
+      </div>
+      <button class="danger-btn" onclick="confirmClear()">清空所有记录</button>
+      <div style="height:8px"></div>
+    </div>`;
+}
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;')}
+function setG2(v){settings.gender2=v;save();renderPage()}
+
+let _avWhich=0;
+function openAvatarPicker(which){
+  _avWhich=which;
+  const emojis=['😊','😍','🥰','😎','🤗','😄','🥳','😇','🤩','😋','😏','🤓',
+    '👩','👨','🧑','👧','👦','🧒','👩‍🦰','👨‍🦱','👩‍🦳','👨‍🦲','🧔','👱',
+    '🐱','🐶','🐼','🐸','🦊','🐰','🐻','🐨','🐯','🦁','🐧','🐣'];
+  document.getElementById('av-picker').innerHTML=`
+    <div class="av-picker-overlay" onclick="if(event.target===this)closeAvPicker()">
+      <div class="av-picker-sheet">
+        <div class="av-picker-title">选择头像</div>
+        <div class="av-emoji-grid">
+          ${emojis.map(e=>`<div class="av-emoji-btn" onclick="setAvEmoji('${e}')">${e}</div>`).join('')}
+        </div>
+        <label class="av-upload-btn">📷 上传照片
+          <input type="file" accept="image/*" style="display:none" onchange="uploadAvatar(this)">
+        </label>
+        <div style="height:8px"></div>
+        <button style="width:100%;padding:10px;border:none;background:none;color:var(--muted);font-size:14px;cursor:pointer" onclick="closeAvPicker()">取消</button>
+      </div>
+    </div>`;
+}
+function closeAvPicker(){document.getElementById('av-picker').innerHTML='';}
+function setAvEmoji(emoji){
+  if(_avWhich===1) settings.avatar1=emoji; else settings.avatar2=emoji;
+  save();closeAvPicker();renderPage();
+}
+function uploadAvatar(input){
+  const file=input.files[0]; if(!file) return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    if(_avWhich===1) settings.avatar1=e.target.result; else settings.avatar2=e.target.result;
+    save();closeAvPicker();renderPage();
+  };
+  reader.readAsDataURL(file);
+}
+function avatarInner(which){
+  const av=which===1?settings.avatar1:settings.avatar2;
+  const fallback=which===1?'🧑':(settings.gender2==='female'?'👩':settings.gender2==='male'?'👨':'🧑');
+  if(av&&av.startsWith('data:')) return `<img src="${av}" style="width:100%;height:100%;object-fit:cover">`;
+  return av||fallback;
+}
+function exportCSV(){
+  const hdr=['日期','券种','Emoji','方向','数量','备注'];
+  const rows=records.map(r=>{
+    const t=couponTypes.find(x=>x.id===r.couponTypeId);
+    return [r.date,r.couponName||(t?t.name:'已删除'),r.couponEmoji||(t?t.emoji:''),dirLabel(r.direction),r.quantity,r.note||''];
+  });
+  const csv=[hdr,...rows].map(row=>row.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8'}));
+  a.download='爱心券记录.csv';
+  a.click();
+  toast('导出成功 ✓');
+}
+
+// ═══ MODALS ═══
+function openModal(html){
+  document.getElementById('modal-content').innerHTML=html;
+  document.getElementById('overlay').classList.add('show');
+}
+function closeModal(){document.getElementById('overlay').classList.remove('show')}
+function openCfm(html){
+  document.getElementById('cfm-content').innerHTML=html;
+  document.getElementById('cfm-overlay').classList.add('show');
+}
+function closeCfm(){document.getElementById('cfm-overlay').classList.remove('show')}
+document.getElementById('overlay').addEventListener('click',e=>{if(e.target.id==='overlay')closeModal()});
+document.getElementById('cfm-overlay').addEventListener('click',e=>{if(e.target.id==='cfm-overlay')closeCfm()});
+
+// ═══ RECORD MODAL ═══
+let rf={direction:'p2top1',couponTypeId:'',quantity:1,note:'',date:''};
+function openRecordModal(){
+  rf={direction:'p2top1',couponTypeId:'',quantity:1,note:'',date:today()};
+  const first=couponTypes.find(t=>t.direction==='p2top1'&&remaining(t.id)>0);
+  if(first) rf.couponTypeId=first.id;
+  _renderRM();
+}
+function _renderRM(){
+  const p=p2();
+  const dirs=[{v:'p2top1',l:`我使用（${p}给我的）`},{v:'p1top2',l:`${p}使用（我给${p}的）`}];
+  const avail=couponTypes.filter(t=>t.direction===rf.direction&&remaining(t.id)>0);
+  if(!avail.find(t=>t.id===rf.couponTypeId)){
+    rf.couponTypeId=avail[0]?.id||'';
+    rf.quantity=1;
+  }
+  const sel=couponTypes.find(t=>t.id===rf.couponTypeId);
+  const maxQ=sel?remaining(sel.id):1;
+  const typeOpts=avail.length===0
+    ?`<option value="">— 该方向暂无可用券 —</option>`
+    :avail.map(t=>`<option value="${t.id}" ${rf.couponTypeId===t.id?'selected':''}>${t.emoji} ${t.name}（剩余${remaining(t.id)}张）</option>`).join('');
+
+  openModal(`
+    <div class="modal-hd">
+      <span class="modal-title">💌 使用一张券</span>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="fg"><label class="fl">使用者</label>
+      <div class="sel-group">${dirs.map(o=>`<div class="sel-opt ${rf.direction===o.v?'active':''}" onclick="rf.direction='${o.v}';rf.couponTypeId='';rf.quantity=1;_renderRM()">${o.l}</div>`).join('')}</div>
+    </div>
+    <div class="fg"><label class="fl">券种</label>
+      <select class="fi" onchange="rf.couponTypeId=this.value;rf.quantity=1;_renderRM()">${typeOpts}</select>
+    </div>
+    <div class="fg"><label class="fl">数量</label>
+      <div class="qty-row">
+        <button class="qty-btn" onclick="if(rf.quantity>1){rf.quantity--;_renderRM()}">−</button>
+        <span class="qty-num">${rf.quantity}</span>
+        <button class="qty-btn" onclick="if(rf.quantity<${maxQ}){rf.quantity++;_renderRM()}">+</button>
+      </div></div>
+    <div class="fg"><label class="fl">日期</label>
+      <input type="date" class="fi" value="${rf.date}" onchange="rf.date=this.value">
+    </div>
+    <div class="fg"><label class="fl">备注（可选）</label>
+      <input class="fi" placeholder="留下一些甜蜜的话..." value="${esc(rf.note)}" oninput="rf.note=this.value">
+    </div>
+    <button class="btn-primary" onclick="submitRecord()" ${!rf.couponTypeId?'disabled':''}>记录 💕</button>
+    <div style="height:8px"></div>`);
+}
+function submitRecord(){
+  if(!rf.couponTypeId) return;
+  const t=couponTypes.find(x=>x.id===rf.couponTypeId);
+  if(!t) return;
+  records.push({
+    id:uid(),couponTypeId:rf.couponTypeId,
+    couponName:t.name,couponEmoji:t.emoji,
+    direction:rf.direction,quantity:rf.quantity,
+    note:rf.note.trim(),
+    date:rf.date||today(),createdAt:Date.now()
+  });
+  save();closeModal();renderPage();
+  toast('记录成功 💕');
+}
+
+// ═══ COUPON TYPE MODAL ═══
+let tf={id:null,name:'',emoji:'💝',direction:'p2top1',hasExpiry:false,expiryDays:30,stock:0};
+let _niQty=1;     // 新建：初始库存
+let _niQtySame=0; // 编辑：同方向新增
+let _niQtyOther=0;// 编辑：另一方向新增
+
+function openTypeModal(id,defDir){
+  if(id){
+    const t=couponTypes.find(x=>x.id===id);
+    if(!t) return;
+    tf={...t};
+    _niQtySame=0;
+    _niQtyOther=0;
+  } else {
+    tf={id:null,name:'',emoji:'💝',direction:defDir||'p2top1',hasExpiry:false,expiryDays:30,stock:0};
+    _niQty=1;
+  }
+  _renderTM();
+}
+function _niQtyA_for(dir){return dir===tf.direction?_niQtySame:_niQtyOther;}
+function _dirStockRow(dir, niQty, niVar){
+  const p=p2();
+  const lbl=dir==='p2top1'?`${p}给我`:`我给${p}`;
+  const t=couponTypes.find(x=>x.direction===dir&&x.name===tf.name&&x.emoji===tf.emoji)||(tf.direction===dir?tf:null);
+  const rem=t?remaining(t.id):0;
+  const after=rem+niQty;
+  const isNew=!t||t.id===tf.id&&tf.direction!==dir; // will create new type
+  const noType=!couponTypes.find(x=>x.direction===dir&&x.name===tf.name&&x.emoji===tf.emoji)&&tf.direction!==dir;
+  return `<div style="background:#F8F8F8;border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:8px">
+    <div style="display:flex;align-items:center;justify-content:space-between">
+      <span style="font-size:13px;font-weight:600;color:var(--text)">${lbl}</span>
+      <span style="font-size:12px;color:var(--muted)">剩余 <b style="color:${rem>0?'var(--primary)':'#bbb'}">${rem}</b> 张${noType?' · 暂无此方向券种':''}</span>
+    </div>
+    <div style="display:flex;align-items:center;justify-content:space-between">
+      <span style="font-size:12px;color:var(--muted)">新增发放</span>
+      <div class="qty-row" style="margin:0">
+        <button class="qty-btn" onclick="if(${niVar}>0){${niVar}--;_renderTM()}">−</button>
+        <span class="qty-num">${niQty}</span>
+        <button class="qty-btn" onclick="${niVar}++;_renderTM()">+</button>
+      </div>
+    </div>
+    ${niQty>0?`<div style="font-size:11px;color:var(--muted);text-align:right">保存后：<b style="color:var(--primary)">${after} 张</b>${noType?' （新建券种）':''}</div>`:''}
+  </div>`;
+}
+function _renderTM(){
+  const p=p2();
+  const isEdit=!!tf.id;
+  const curRem=isEdit?remaining(tf.id):0;
+  const afterStock=curRem+_niQty;
+  const egHTML=EMOJIS.map(e=>`<div class="emoji-opt ${tf.emoji===e?'active':''}" onclick="tf.emoji='${e}';_renderTM()">${e}</div>`).join('');
+  openModal(`
+    <div class="modal-hd">
+      <span class="modal-title">${isEdit?'编辑':'新建'}券种</span>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="fg"><label class="fl">券名</label>
+      <input class="fi" placeholder="例如：免费按摩券" value="${esc(tf.name)}" oninput="tf.name=this.value">
+    </div>
+    <div class="fg"><label class="fl">Emoji 图标 &nbsp;<span style="font-size:18px">${tf.emoji}</span></label>
+      <div class="emoji-grid">${egHTML}</div>
+    </div>
+    ${isEdit
+      ? `<div class="fg"><label class="fl">发放数量</label>
+           <div style="display:flex;flex-direction:column;gap:8px">
+             ${_dirStockRow('p2top1',_niQtyA_for('p2top1'),tf.direction==='p2top1'?'_niQtySame':'_niQtyOther')}
+             ${_dirStockRow('p1top2',_niQtyA_for('p1top2'),tf.direction==='p1top2'?'_niQtySame':'_niQtyOther')}
+           </div>
+         </div>`
+      : `<div class="fg"><label class="fl">方向</label>
+           <div class="sel-group">
+             <div class="sel-opt ${tf.direction==='p2top1'?'active':''}" onclick="tf.direction='p2top1';_renderTM()">${p}→我</div>
+             <div class="sel-opt ${tf.direction==='p1top2'?'active':''}" onclick="tf.direction='p1top2';_renderTM()">我→${p}</div>
+           </div>
+         </div>
+         <div class="fg">
+           <label class="fl">发放数量</label>
+           <div class="qty-row">
+             <button class="qty-btn" onclick="if(_niQty>1){_niQty--;_renderTM()}">−</button>
+             <span class="qty-num">${_niQty}</span>
+             <button class="qty-btn" onclick="_niQty++;_renderTM()">+</button>
+           </div>
+         </div>`}
+
+    <div class="fg"><label class="fl">选项</label>
+      <div style="display:flex;flex-direction:column;gap:9px">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:11px 13px;background:#FAFAFA;border-radius:11px">
+          <span style="font-size:14px;color:var(--text)">设置有效期</span>
+          <div class="toggle ${tf.hasExpiry?'on':''}" onclick="tf.hasExpiry=!tf.hasExpiry;_renderTM()"></div>
+        </div>
+        ${tf.hasExpiry?`<div style="display:flex;align-items:center;gap:10px;padding:0 4px">
+          <span style="font-size:13px;color:var(--muted)">有效天数</span>
+          <input type="number" class="fi" style="width:90px;text-align:center" value="${tf.expiryDays}" min="1" oninput="tf.expiryDays=parseInt(this.value)||30">
+          <span style="font-size:13px;color:var(--muted)">天</span>
+        </div>`:''}
+      </div>
+    </div>
+    <button class="btn-primary" onclick="submitType()">💾 保存券种</button>
+    <div style="height:8px"></div>`);
+}
+function submitType(){
+  if(!tf.name.trim()){toast('请输入券名 ✏️');return}
+  if(tf.id){
+    // 编辑：分别处理两个方向
+    function applyDir(dir, qty){
+      if(qty<=0) return;
+      const existing=couponTypes.find(x=>x.direction===dir&&x.name===tf.name&&x.emoji===tf.emoji);
+      if(existing){
+        existing.stock+=qty;
+      } else {
+        couponTypes.push({...tf,id:uid(),direction:dir,stock:qty,createdAt:Date.now()});
+      }
+    }
+    // 先更新当前券种的其他字段（名字、emoji、有效期）
+    const i=couponTypes.findIndex(x=>x.id===tf.id);
+    if(i>=0) couponTypes[i]={...tf};
+    applyDir(tf.direction,_niQtySame);
+    const otherDir=tf.direction==='p2top1'?'p1top2':'p2top1';
+    applyDir(otherDir,_niQtyOther);
+  } else {
+    couponTypes.push({...tf,id:uid(),stock:_niQty,createdAt:Date.now()});
+  }
+  save();closeModal();renderPage();
+  toast(tf.id?'已更新 ✓':'已添加 ✓');
+}
+
+// ═══ CONFIRMS ═══
+function confirmDel(id){
+  const t=couponTypes.find(x=>x.id===id);
+  if(!t) return;
+  const rem=remaining(id);
+  openCfm(`<span class="cfm-icon">🗑️</span>
+    <div class="cfm-title">删除「${t.emoji} ${t.name}」</div>
+    <div class="cfm-body">当前剩余库存 <b>${rem}</b> 张，请选择操作：</div>
+    <div class="cfm-actions" style="flex-direction:column;gap:8px">
+      <button class="cfm-ok" style="background:#FF9AAF" onclick="doDelOne('${id}')" ${rem<=0?'disabled style="opacity:.4;pointer-events:none"':''}>减少 1 张库存</button>
+      <button class="cfm-ok" onclick="doDelType('${id}')">删除整个券种</button>
+      <button class="cfm-cancel" onclick="closeCfm()">取消</button>
+    </div>`);
+}
+function doDelOne(id){
+  const i=couponTypes.findIndex(x=>x.id===id);
+  if(i<0) return;
+  if(couponTypes[i].stock>0) couponTypes[i].stock=Math.max(0,couponTypes[i].stock-1);
+  save();closeCfm();renderPage();toast('已减少 1 张库存');
+}
+function doDelType(id){
+  couponTypes=couponTypes.filter(x=>x.id!==id);
+  save();closeCfm();renderPage();toast('已删除');
+}
+function confirmClear(){
+  openCfm(`<span class="cfm-icon">⚠️</span>
+    <div class="cfm-title">清空记录</div>
+    <div class="cfm-body">确定清空所有使用记录？<br>此操作不可恢复。</div>
+    <div class="cfm-actions">
+      <button class="cfm-cancel" onclick="closeCfm()">取消</button>
+      <button class="cfm-ok" onclick="doClear()">清空</button>
+    </div>`);
+}
+function doClear(){records=[];save();closeCfm();renderPage();toast('记录已清空')}
+
+// ═══ SAMPLE DATA ═══
+function seedData(){
+  if(couponTypes.length>0) return;
+  const n=Date.now();
+  couponTypes=[
+    {id:uid(),name:'免费按摩',emoji:'💆',direction:'p2top1',hasExpiry:false,expiryDays:30,stock:1,createdAt:n},
+    {id:uid(),name:'亲手做饭',emoji:'🍳',direction:'p1top2',hasExpiry:false,expiryDays:30,stock:1,createdAt:n},
+  ];
+  records=[];
+  save();
+}
+
+// ═══ INIT ═══
+load();
+seedData();
+renderPage();
+</script>
+</body>
+</html>
